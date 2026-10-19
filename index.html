@@ -3,89 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Easy Invoice — Fast Billing for Freelancers</title>
+  <title>Easy Invoice — Technical Billing</title>
   
   <!-- Vercel Analytics & Supabase -->
   <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Engineering Fonts: Inter for UI, JetBrains Mono for Data -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   
   <style>
-    :root { --brand-color: #18181b; }
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8f8f7; color: #18181b; letter-spacing: -0.01em; }
-    .paper-input { background: #fafafa; border: 1px solid #e4e4e7; border-radius: 6px; padding: 6px 10px; transition: all 0.15s ease; width: 100%; font-size: 13px; }
-    .paper-input:hover { border-color: #a1a1aa; background: #ffffff; }
-    .paper-input:focus { outline: none; border-color: var(--brand-color); background: #ffffff; box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.08); }
+    :root { --brand-color: #000000; }
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background-color: #f9fafb; 
+      color: #000000; 
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    
+    /* Technical, flat input styling */
+    .paper-input { 
+      background: transparent; 
+      border: 1px solid transparent; 
+      border-bottom: 1px solid #d1d5db; 
+      border-radius: 0; 
+      padding: 4px 8px; 
+      transition: all 0.15s ease; 
+      width: 100%; 
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; 
+    }
+    .paper-input:hover { border-bottom-color: #9ca3af; background: #f3f4f6; }
+    .paper-input:focus { outline: none; border-bottom-color: #000000; background: transparent; }
+    
     .brand-bg { background-color: var(--brand-color); }
     .brand-text { color: var(--brand-color); }
+    
+    /* Strict print layout */
     @media print {
       @page { size: auto; margin: 10mm; }
       body { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
       .no-print { display: none !important; }
-      #invoice-paper { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
+      #invoice-paper { border: none !important; margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
       .paper-input { border: 1px solid transparent !important; background: transparent !important; padding: 2px 0 !important; }
     }
   </style>
 </head>
-<body class="antialiased selection:bg-zinc-900 selection:text-white">
+<body class="selection:bg-black selection:text-white">
 
-  <!-- TOP NAVIGATION BAR -->
-  <header class="no-print border-b border-zinc-200/80 bg-white/80 backdrop-blur-xl sticky top-0 z-40">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
+  <!-- TOP NAVIGATION BAR (Technical & Flat) -->
+  <header class="no-print border-b border-gray-300 bg-white sticky top-0 z-40">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
       <div class="flex items-center gap-3">
-        <div class="w-8 h-8 rounded-xl bg-zinc-900 text-white flex items-center justify-center font-bold text-sm tracking-tight shadow-sm">E</div>
-        <span class="font-bold tracking-tight text-zinc-900 text-sm">Easy Invoice</span>
+        <div class="w-7 h-7 bg-black text-white flex items-center justify-center font-mono font-bold text-sm">E</div>
+        <span class="font-bold tracking-tight text-black text-sm uppercase">Easy Invoice</span>
       </div>
 
-      <div class="flex items-center bg-zinc-100/80 p-1 rounded-xl border border-zinc-200/60 shadow-2xs">
-        <button onclick="switchAppView('editor')" id="tab-editor" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-zinc-900 shadow-2xs transition flex items-center gap-1.5 cursor-pointer">
-          <span>Editor</span>
+      <div class="flex items-center bg-gray-100 p-0.5 border border-gray-300">
+        <button onclick="switchAppView('editor')" id="tab-editor" class="px-4 py-1 text-xs font-semibold bg-white text-black border border-gray-300 transition cursor-pointer">
+          Editor
         </button>
-        <button onclick="switchAppView('history')" id="tab-history" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition flex items-center gap-1.5 cursor-pointer">
-          <span>Invoices & History</span>
+        <button onclick="switchAppView('history')" id="tab-history" class="px-4 py-1 text-xs font-semibold text-gray-500 hover:text-black transition cursor-pointer border border-transparent">
+          History
         </button>
-        <button onclick="switchAppView('client')" id="tab-client" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition flex items-center gap-1.5 cursor-pointer">
-          <span>Client View</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+        <button onclick="switchAppView('client')" id="tab-client" class="px-4 py-1 text-xs font-semibold text-gray-500 hover:text-black transition cursor-pointer border border-transparent flex items-center gap-1.5">
+          Client View <span class="w-1.5 h-1.5 bg-emerald-500 rounded-none"></span>
         </button>
       </div>
 
-      <div class="flex items-center gap-2.5 text-sm">
-        <!-- New Auth Button -->
-        <button id="auth-btn" onclick="openAuthModal()" class="px-4 py-1.5 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-700 bg-white hover:border-zinc-300 transition cursor-pointer shadow-2xs">
+      <div class="flex items-center gap-3 text-sm">
+        <button id="auth-btn" onclick="openAuthModal()" class="px-4 py-1 border border-black text-xs font-semibold text-black hover:bg-black hover:text-white transition cursor-pointer">
           Sign In
         </button>
-        <button onclick="copyShareableClientLink()" id="copy-link-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 hover:border-zinc-300 bg-white text-xs font-semibold text-zinc-700 hover:text-zinc-900 transition shadow-2xs cursor-pointer">
-          <span id="copy-link-text">Copy Client Link</span>
+        <button onclick="copyShareableClientLink()" id="copy-link-btn" class="px-4 py-1 bg-black text-white text-xs font-semibold hover:bg-gray-800 transition cursor-pointer font-mono">
+          <span id="copy-link-text">COPY_LINK</span>
         </button>
-        <button onclick="resetDefaults()" class="hidden sm:inline text-zinc-400 hover:text-zinc-700 text-xs underline cursor-pointer">Reset</button>
       </div>
     </div>
   </header>
 
   <!-- AUTHENTICATION MODAL -->
-  <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm">
-    <div class="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full relative">
-      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 text-xl font-bold cursor-pointer">&times;</button>
-      <h2 class="text-xl font-bold text-zinc-900 mb-2">Sign In / Account</h2>
-      <p class="text-xs text-zinc-500 mb-6">Log in to save and access your invoices securely from the cloud.</p>
+  <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50">
+    <div class="bg-white p-8 border border-black max-w-sm w-full relative">
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-black text-xl font-bold cursor-pointer font-mono">&times;</button>
+      <h2 class="text-lg font-bold text-black mb-1 uppercase tracking-tight">System Access</h2>
+      <p class="text-xs text-gray-500 mb-6 font-mono">Authenticate to sync records to the cloud.</p>
       
       <div class="space-y-4">
         <div>
-          <label class="block text-xs font-bold text-zinc-700 mb-1">Email</label>
-          <input type="email" id="auth-email" placeholder="you@example.com" class="paper-input border border-zinc-300 rounded-lg p-2 w-full text-sm">
+          <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Email</label>
+          <input type="email" id="auth-email" placeholder="sys@admin.com" class="font-mono text-sm border border-gray-300 w-full p-2 focus:outline-none focus:border-black">
         </div>
         <div>
-          <label class="block text-xs font-bold text-zinc-700 mb-1">Password</label>
-          <input type="password" id="auth-password" placeholder="••••••••" class="paper-input border border-zinc-300 rounded-lg p-2 w-full text-sm">
+          <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Password</label>
+          <input type="password" id="auth-password" placeholder="••••••••" class="font-mono text-sm border border-gray-300 w-full p-2 focus:outline-none focus:border-black">
         </div>
         
-        <div class="pt-2 flex gap-2">
-          <button onclick="handleLogin()" class="flex-1 bg-zinc-900 text-white rounded-xl py-2 text-sm font-bold hover:opacity-90 transition cursor-pointer">Login</button>
-          <button onclick="handleSignUp()" class="flex-1 bg-white border border-zinc-200 text-zinc-900 rounded-xl py-2 text-sm font-bold hover:bg-zinc-50 transition cursor-pointer">Sign Up</button>
+        <div class="pt-4 flex gap-2">
+          <button onclick="handleLogin()" class="flex-1 bg-black text-white py-2 text-xs font-bold hover:bg-gray-800 transition cursor-pointer uppercase">Login</button>
+          <button onclick="handleSignUp()" class="flex-1 bg-white border border-black text-black py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer uppercase">Sign Up</button>
         </div>
-        <p id="auth-error" class="text-xs text-red-500 mt-2 hidden"></p>
+        <p id="auth-error" class="text-xs text-red-600 mt-2 hidden font-mono"></p>
       </div>
     </div>
   </div>
@@ -95,786 +115,46 @@
   <!-- ================================================================= -->
   <div id="editor-view-container">
     <section class="no-print max-w-5xl mx-auto px-4 mt-6 mb-6">
-      <div class="bg-white/90 backdrop-blur-md border border-zinc-200/80 rounded-2xl shadow-sm p-4 flex flex-wrap items-center justify-between gap-4">
-        <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+      <div class="bg-white border border-gray-300 p-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap items-center gap-6">
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Type</label>
-            <div class="inline-flex rounded-xl bg-zinc-100 p-1 border border-zinc-200/60">
-              <button onclick="setDocMode('full')" id="mode-full" class="px-3 py-1 text-xs font-semibold rounded-lg bg-white text-zinc-900 shadow-2xs transition cursor-pointer">Invoice</button>
-              <button onclick="setDocMode('deposit')" id="mode-deposit" class="px-3 py-1 text-xs font-semibold rounded-lg text-zinc-500 hover:text-zinc-900 transition cursor-pointer">50% Deposit</button>
-              <button onclick="setDocMode('quote')" id="mode-quote" class="px-3 py-1 text-xs font-semibold rounded-lg text-zinc-500 hover:text-zinc-900 transition cursor-pointer">Quote</button>
+            <label class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-500 mb-1.5">Document Type</label>
+            <div class="inline-flex bg-gray-100 border border-gray-300 p-0.5">
+              <button onclick="setDocMode('full')" id="mode-full" class="px-3 py-1 text-xs font-semibold bg-white text-black border border-gray-300 transition cursor-pointer">INV</button>
+              <button onclick="setDocMode('deposit')" id="mode-deposit" class="px-3 py-1 text-xs font-semibold text-gray-500 hover:text-black transition cursor-pointer border border-transparent">DEP(50%)</button>
+              <button onclick="setDocMode('quote')" id="mode-quote" class="px-3 py-1 text-xs font-semibold text-gray-500 hover:text-black transition cursor-pointer border border-transparent">QUO</button>
             </div>
           </div>
 
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Billing</label>
-            <div class="inline-flex rounded-xl bg-zinc-100 p-1 border border-zinc-200/60">
-              <button onclick="setBillingMode('hourly')" id="billing-hourly" class="px-3 py-1 text-xs font-semibold rounded-lg bg-white text-zinc-900 shadow-2xs transition cursor-pointer">Hourly</button>
-              <button onclick="setBillingMode('flat')" id="billing-flat" class="px-3 py-1 text-xs font-semibold rounded-lg text-zinc-500 hover:text-zinc-900 transition cursor-pointer">Flat Fee</button>
+            <label class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-500 mb-1.5">Billing Mode</label>
+            <div class="inline-flex bg-gray-100 border border-gray-300 p-0.5">
+              <button onclick="setBillingMode('hourly')" id="billing-hourly" class="px-3 py-1 text-xs font-semibold bg-white text-black border border-gray-300 transition cursor-pointer">HRLY</button>
+              <button onclick="setBillingMode('flat')" id="billing-flat" class="px-3 py-1 text-xs font-semibold text-gray-500 hover:text-black transition cursor-pointer border border-transparent">FLAT</button>
             </div>
           </div>
 
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Currency</label>
-            <select id="currency-select" onchange="updateCurrency()" class="bg-zinc-100 border border-zinc-200/60 text-zinc-900 text-xs font-semibold rounded-xl px-3 py-1.5 outline-none cursor-pointer">
-              <option value="$">USD ($)</option>
-              <option value="€">EUR (€)</option>
-              <option value="£">GBP (£)</option>
-              <option value="CA$">CAD (CA$)</option>
-              <option value="A$">AUD (A$)</option>
+            <label class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-500 mb-1.5">Currency</label>
+            <select id="currency-select" onchange="updateCurrency()" class="bg-gray-100 border border-gray-300 text-black text-xs font-mono font-semibold px-3 py-1 outline-none cursor-pointer">
+              <option value="$">USD</option>
+              <option value="€">EUR</option>
+              <option value="£">GBP</option>
+              <option value="CA$">CAD</option>
             </select>
           </div>
 
           <div>
-            <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">Accent</label>
-            <div class="flex items-center gap-1.5 pt-0.5">
-              <button onclick="setAccentColor('#18181b')" class="w-5 h-5 rounded-full bg-zinc-900 ring-2 ring-offset-2 ring-zinc-900 cursor-pointer"></button>
-              <button onclick="setAccentColor('#2563eb')" class="w-5 h-5 rounded-full bg-blue-600 hover:opacity-90 cursor-pointer"></button>
-              <button onclick="setAccentColor('#059669')" class="w-5 h-5 rounded-full bg-emerald-600 hover:opacity-90 cursor-pointer"></button>
-              <button onclick="setAccentColor('#7c3aed')" class="w-5 h-5 rounded-full bg-purple-600 hover:opacity-90 cursor-pointer"></button>
-              <button onclick="setAccentColor('#dc2626')" class="w-5 h-5 rounded-full bg-red-600 hover:opacity-90 cursor-pointer"></button>
+            <label class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-500 mb-1.5">Accent</label>
+            <div class="flex items-center gap-2 pt-1">
+              <button onclick="setAccentColor('#000000')" class="w-4 h-4 bg-black border border-gray-400 cursor-pointer"></button>
+              <button onclick="setAccentColor('#2563eb')" class="w-4 h-4 bg-blue-600 border border-gray-400 cursor-pointer"></button>
+              <button onclick="setAccentColor('#059669')" class="w-4 h-4 bg-emerald-600 border border-gray-400 cursor-pointer"></button>
+              <button onclick="setAccentColor('#dc2626')" class="w-4 h-4 bg-red-600 border border-gray-400 cursor-pointer"></button>
             </div>
           </div>
         </div>
 
-        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <button onclick="downloadPDF()" class="brand-bg hover:opacity-90 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer flex items-center gap-2">
-            <span>Download PDF</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- TOGGLES -->
-      <div class="flex flex-wrap items-center gap-4 mt-3 px-1 text-xs text-zinc-600 font-medium">
-        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-          <input type="checkbox" id="toggle-vault" checked onchange="toggleVaultSection()" class="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900">
-          <span>Pay-to-Unlock Files</span>
-        </label>
-        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-          <input type="checkbox" id="toggle-latefee" checked onchange="toggleLateFee()" class="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900">
-          <span>Late Fee Clause</span>
-        </label>
-        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
-          <input type="checkbox" id="toggle-qr" checked onchange="toggleQRSection()" class="rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900">
-          <span>Payment QR Code</span>
-        </label>
-        <span id="autosave-indicator" class="ml-auto text-[11px] text-emerald-600 font-semibold flex items-center gap-1">Saved</span>
-      </div>
-    </section>
-
-    <!-- INVOICE PAPER SHEET -->
-    <main class="max-w-3xl mx-auto px-4 mb-20">
-      <div id="invoice-paper" class="bg-white border border-zinc-200/80 rounded-2xl shadow-xl p-8 sm:p-12 transition-all">
-        
-        <!-- HEADER / LOGO & SENDER -->
-        <div class="flex flex-col sm:flex-row justify-between items-start gap-6 pb-8 border-b border-zinc-100">
-          <div class="space-y-3 w-full sm:w-1/2">
-            <div class="flex items-center gap-3 group">
-              <div id="logo-container" class="relative">
-                <input type="file" id="logo-file-input" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
-                <div onclick="document.getElementById('logo-file-input').click()" id="logo-preview-box" class="w-14 h-14 rounded-xl border-2 border-dashed border-zinc-200 hover:border-zinc-400 bg-zinc-50 flex flex-col items-center justify-center text-zinc-400 cursor-pointer overflow-hidden transition">
-                  <span class="text-[10px] font-bold uppercase">+ Logo</span>
-                </div>
-              </div>
-              <div class="flex-1">
-                <input type="text" id="sender-name" placeholder="YOUR NAME / BUSINESS" class="paper-input font-bold text-base tracking-tight text-zinc-900" oninput="triggerAutoSave()">
-              </div>
-            </div>
-            <div>
-              <input type="text" id="sender-role" placeholder="ROLE / SPECIALTY (e.g. Brand Designer & Developer)" class="paper-input text-xs text-zinc-500 font-medium" oninput="triggerAutoSave()">
-            </div>
-            <div>
-              <textarea id="sender-contact" placeholder="Contact & Tax Info (Email, Website, Location, Tax/EIN #)" rows="2" class="paper-input text-xs text-zinc-600 resize-none" oninput="triggerAutoSave()"></textarea>
-            </div>
-          </div>
-
-          <div class="w-full sm:w-auto text-left sm:text-right space-y-2">
-            <h1 id="doc-title-display" class="text-2xl font-black tracking-tight uppercase brand-text">INVOICE</h1>
-            <div class="flex sm:justify-end items-center gap-2">
-              <span class="text-xs font-semibold text-zinc-400">INVOICE NO.</span>
-              <input type="text" id="invoice-no" value="INV-001" class="paper-input w-28 text-right font-bold text-xs" oninput="triggerAutoSave()">
-            </div>
-            <div class="flex sm:justify-end items-center gap-2">
-              <span class="text-xs font-semibold text-zinc-400">ISSUED DATE</span>
-              <input type="date" id="issued-date" class="paper-input w-36 text-right text-xs" oninput="triggerAutoSave()">
-            </div>
-            <div class="flex sm:justify-end items-center gap-2">
-              <span class="text-xs font-semibold text-zinc-400">DUE DATE</span>
-              <input type="date" id="due-date" class="paper-input w-36 text-right text-xs" oninput="triggerAutoSave()">
-            </div>
-          </div>
-        </div>
-
-        <!-- BILLED TO -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 py-8 border-b border-zinc-100">
-          <div class="space-y-2">
-            <span class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Billed To</span>
-            <input type="text" id="client-name" placeholder="Client / Company Name" class="paper-input font-bold text-sm text-zinc-900" oninput="triggerAutoSave()">
-            <textarea id="client-address" placeholder="Contact & Billing Address (Email, address...)" rows="2" class="paper-input text-xs text-zinc-600 resize-none" oninput="triggerAutoSave()"></textarea>
-          </div>
-          <div class="space-y-2">
-            <span class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Project Scope</span>
-            <input type="text" id="project-title" placeholder="Project Title (e.g. Website Redesign)" class="paper-input font-semibold text-sm text-zinc-900" oninput="triggerAutoSave()">
-            <input type="text" id="project-milestone" placeholder="Milestone / PO Number (e.g. Phase 1 Deliverables)" class="paper-input text-xs text-zinc-600" oninput="triggerAutoSave()">
-          </div>
-        </div>
-
-        <!-- LINE ITEMS TABLE -->
-        <div class="py-8 border-b border-zinc-100">
-          <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
-              <thead>
-                <tr class="border-b border-zinc-200 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                  <th class="py-3 pr-4">Description</th>
-                  <th id="th-qty" class="py-3 px-2 w-24 text-center">Hours / Qty</th>
-                  <th id="th-rate" class="py-3 px-2 w-28 text-right">Rate</th>
-                  <th class="py-3 pl-4 w-28 text-right">Amount</th>
-                  <th class="no-print w-10"></th>
-                </tr>
-              </thead>
-              <tbody id="line-items-tbody">
-                <!-- Dynamically populated rows -->
-              </tbody>
-            </table>
-          </div>
-
-          <div class="no-print mt-4">
-            <button onclick="addLineItem()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 hover:border-zinc-300 text-xs font-semibold text-zinc-700 bg-white transition shadow-2xs cursor-pointer">
-              <span>+ Add Line Item</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- PAY-TO-UNLOCK DELIVERABLE VAULT SECTION -->
-        <div id="vault-section" class="py-6 border-b border-zinc-100 bg-zinc-50/70 -mx-8 sm:-mx-12 px-8 sm:px-12 my-6">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="text-sm">🔒</span>
-            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-900">Pay-to-Unlock Deliverable Vault</h3>
-            <span class="ml-auto text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full">Unlocks on Payment</span>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Deliverable File Name / Description</label>
-              <input type="text" id="vault-desc" placeholder="e.g. Master Figma File & Source Code (.zip)" class="paper-input bg-white text-xs font-medium" oninput="triggerAutoSave()">
-            </div>
-            <div>
-              <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1">Secret Download URL (Google Drive, Dropbox, Figma)</label>
-              <input type="text" id="vault-url" placeholder="https://drive.google.com/..." class="paper-input bg-white text-xs font-medium" oninput="triggerAutoSave()">
-            </div>
-          </div>
-        </div>
-
-        <!-- SCAN TO PAY & PAYMENT INSTRUCTIONS -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 py-8 border-b border-zinc-100">
-          <div id="qr-section" class="space-y-3">
-            <span class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Scan to Pay</span>
-            <div class="flex items-center gap-4">
-              <div id="qr-code-box" class="w-24 h-24 bg-zinc-100 border border-zinc-200 rounded-xl flex items-center justify-center p-2 text-center text-[10px] text-zinc-400">
-                <!-- QR Code rendered here -->
-              </div>
-              <div class="flex-1 space-y-2">
-                <input type="text" id="stripe-link" placeholder="Stripe / Payment Link (e.g. https://buy.stripe.com/...)" class="paper-input text-xs" oninput="updateQRCode(); triggerAutoSave()">
-                <p class="text-[11px] text-zinc-400 leading-normal">Clients can scan this QR code or click your link to instantly pay online.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-3">
-            <span class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Payment Instructions & Notes</span>
-            <textarea id="payment-notes" placeholder="ACH Routing, Wire details, or thank you note..." rows="4" class="paper-input text-xs text-zinc-600 resize-none h-24" oninput="triggerAutoSave()">Payment due within 14 days of invoice date. Thank you for your business!</textarea>
-          </div>
-        </div>
-
-        <!-- TOTALS & CALCULATIONS -->
-        <div class="pt-8 flex justify-end">
-          <div class="w-full sm:w-72 space-y-2 text-right">
-            <div class="flex justify-between text-xs text-zinc-500">
-              <span>Subtotal</span>
-              <span id="calc-subtotal" class="font-semibold text-zinc-900">$0.00</span>
-            </div>
-            <div class="flex justify-between items-center text-xs text-zinc-500">
-              <span class="flex items-center gap-1">Tax (%) <input type="number" id="tax-rate" value="0" min="0" max="100" step="0.5" class="w-14 paper-input text-right py-0.5" oninput="calculateTotals(); triggerAutoSave()"></span>
-              <span id="calc-tax" class="font-semibold text-zinc-900">$0.00</span>
-            </div>
-            <div class="flex justify-between text-sm font-bold text-zinc-900 pt-2 border-t border-zinc-200">
-              <span id="total-label">Total</span>
-              <span id="calc-total" class="text-base">$0.00</span>
-            </div>
-            <div id="deposit-due-row" class="hidden flex justify-between text-xs font-bold brand-text pt-1">
-              <span>Due Now (50% Deposit)</span>
-              <span id="calc-deposit">$0.00</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- FOOTER / LATE FEE CLAUSE -->
-        <div id="latefee-clause" class="mt-12 pt-6 border-t border-zinc-100 text-[11px] text-zinc-400 leading-normal">
-          Terms: Payment due by due date. Overdue balances subject to 1.5% monthly late fee.
-        </div>
-
-      </div>
-    </main>
-  </div>
-
-  <!-- ================================================================= -->
-  <!-- VIEW 2: INVOICES & HISTORY DASHBOARD                              -->
-  <!-- ================================================================= -->
-  <div id="history-view-container" class="hidden max-w-5xl mx-auto px-4 mt-8 mb-20">
-    <div class="bg-white border border-zinc-200/80 rounded-2xl shadow-sm p-6 sm:p-8">
-      <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-zinc-100">
-        <div>
-          <h2 class="text-xl font-bold tracking-tight text-zinc-900">Sent & Paid Invoices</h2>
-          <p class="text-xs text-zinc-500 mt-0.5">Track all generated invoices, update payment statuses, and manage records.</p>
-        </div>
-        <div class="flex items-center gap-2">
-          <button onclick="clearAllHistory()" class="px-3 py-1.5 rounded-xl border border-zinc-200 hover:border-red-300 hover:text-red-600 text-xs font-semibold text-zinc-600 bg-white transition cursor-pointer">Clear History</button>
-        </div>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
-          <thead>
-            <tr class="border-b border-zinc-200 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-              <th class="py-3 px-4">Invoice #</th>
-              <th class="py-3 px-4">Client</th>
-              <th class="py-3 px-4">Date</th>
-              <th class="py-3 px-4">Total</th>
-              <th class="py-3 px-4">Status</th>
-              <th class="py-3 px-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="history-table-body">
-            <!-- Populated via JS -->
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <!-- ================================================================= -->
-  <!-- VIEW 3: CLIENT PUBLIC VIEW                                        -->
-  <!-- ================================================================= -->
-  <div id="client-view-container" class="hidden max-w-3xl mx-auto px-4 mt-8 mb-20">
-    <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 mb-6 flex items-center justify-between gap-4 no-print">
-      <div class="flex items-center gap-3">
-        <span class="w-3 h-3 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span class="text-xs font-bold text-emerald-900">Client Portal Mode — This is what your client sees.</span>
-      </div>
-      <button onclick="switchAppView('editor')" class="px-3 py-1.5 bg-emerald-900 text-white rounded-xl text-xs font-bold hover:bg-emerald-800 transition cursor-pointer">Back to Editor</button>
-    </div>
-
-    <!-- Client Render Paper -->
-    <div id="client-render-paper" class="bg-white border border-zinc-200/80 rounded-2xl shadow-xl p-8 sm:p-12 space-y-8">
-      <!-- Client view populated dynamically -->
-    </div>
-  </div>
-
-  <!-- QR Code Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  
-  <script>
-    // --- SUPABASE CONFIGURATION ---
-    // You will need to replace these with your actual Supabase URL and Anon Key later
-    const SUPABASE_URL = 'https://theeknltrsxktauspbpd.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_pF2KpduQIhc16M4H7MuBzw_E_oRFUz4';
-    let supabaseClient = null;
-    let currentUser = null;
-
-    try {
-      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    } catch(e) {
-      console.warn("Supabase not fully configured yet.");
-    }
-
-    // --- STATE MANAGEMENT ---
-    let docMode = 'full'; 
-    let billingMode = 'hourly'; 
-    let currencySymbol = '$';
-    let accentColor = '#18181b';
-    let lineItems = [
-      { desc: 'Design System & Wireframes', qty: 1, rate: 0 }
-    ];
-    let customLogoBase64 = '';
-    let invoicesHistory = JSON.parse(localStorage.getItem('easy_invoice_history') || '[]');
-
-    // --- INITIALIZATION ---
-    window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('issued-date').valueAsDate = new Date();
-      const dueDateDefault = new Date();
-      dueDateDefault.setDate(dueDateDefault.getDate() + 14);
-      document.getElementById('due-date').valueAsDate = dueDateDefault;
-
-      renderLineItems();
-      calculateTotals();
-      updateQRCode();
-      loadFromLocalStorage();
-    });
-
-    // --- AUTH LOGIC ---
-    function openAuthModal() {
-      document.getElementById('auth-modal').classList.remove('hidden');
-    }
-    
-    function closeAuthModal() {
-      document.getElementById('auth-modal').classList.add('hidden');
-      document.getElementById('auth-error').classList.add('hidden');
-    }
-
-    async function handleSignUp() {
-      if(!supabaseClient) return alert("Supabase keys are needed to enable Sign Up!");
-      const email = document.getElementById('auth-email').value;
-      const password = document.getElementById('auth-password').value;
-      
-      const { data, error } = await supabaseClient.auth.signUp({ email, password });
-      if (error) {
-        showAuthError(error.message);
-      } else {
-        alert("Success! Check your email to confirm your account.");
-        closeAuthModal();
-      }
-    }
-
-    async function handleLogin() {
-      if(!supabaseClient) return alert("Supabase keys are needed to enable Login!");
-      const email = document.getElementById('auth-email').value;
-      const password = document.getElementById('auth-password').value;
-      
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) {
-        showAuthError(error.message);
-      } else {
-        currentUser = data.user;
-        document.getElementById('auth-btn').innerText = "Account";
-        closeAuthModal();
-        alert("Logged in! Your invoices will now sync to the cloud.");
-      }
-    }
-
-    function showAuthError(msg) {
-      const errEl = document.getElementById('auth-error');
-      errEl.innerText = msg;
-      errEl.classList.remove('hidden');
-    }
-
-    function switchAppView(view) {
-      document.getElementById('editor-view-container').classList.add('hidden');
-      document.getElementById('history-view-container').classList.add('hidden');
-      document.getElementById('client-view-container').classList.add('hidden');
-
-      document.getElementById('tab-editor').className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition flex items-center gap-1.5 cursor-pointer";
-      document.getElementById('tab-history').className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition flex items-center gap-1.5 cursor-pointer";
-      document.getElementById('tab-client').className = "px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition flex items-center gap-1.5 cursor-pointer";
-
-      if (view === 'editor') {
-        document.getElementById('editor-view-container').classList.remove('hidden');
-        document.getElementById('tab-editor').className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-zinc-900 shadow-2xs transition flex items-center gap-1.5 cursor-pointer";
-      } else if (view === 'history') {
-        document.getElementById('history-view-container').classList.remove('hidden');
-        document.getElementById('tab-history').className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-zinc-900 shadow-2xs transition flex items-center gap-1.5 cursor-pointer";
-        renderHistoryTable();
-      } else if (view === 'client') {
-        document.getElementById('client-view-container').classList.remove('hidden');
-        document.getElementById('tab-client').className = "px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-zinc-900 shadow-2xs transition flex items-center gap-1.5 cursor-pointer";
-        renderClientPortal();
-      }
-    }
-
-    // --- DOCUMENT MODE & STYLING ---
-    function setDocMode(mode) {
-      docMode = mode;
-      ['full', 'deposit', 'quote'].forEach(m => {
-        const btn = document.getElementById(`mode-${m}`);
-        if (m === mode) {
-          btn.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-white text-zinc-900 shadow-2xs transition cursor-pointer";
-        } else {
-          btn.className = "px-3 py-1 text-xs font-semibold rounded-lg text-zinc-500 hover:text-zinc-900 transition cursor-pointer";
-        }
-      });
-
-      const titleEl = document.getElementById('doc-title-display');
-      const depositRow = document.getElementById('deposit-due-row');
-      const totalLabel = document.getElementById('total-label');
-
-      if (mode === 'full') {
-        titleEl.innerText = 'INVOICE';
-        depositRow.classList.add('hidden');
-        totalLabel.innerText = 'Total';
-      } else if (mode === 'deposit') {
-        titleEl.innerText = 'INVOICE (50% DEPOSIT)';
-        depositRow.classList.remove('hidden');
-        totalLabel.innerText = 'Total';
-      } else if (mode === 'quote') {
-        titleEl.innerText = 'PROJECT QUOTE';
-        depositRow.classList.add('hidden');
-        totalLabel.innerText = 'Estimate Total';
-      }
-      calculateTotals();
-      triggerAutoSave();
-    }
-
-    function setBillingMode(mode) {
-      billingMode = mode;
-      ['hourly', 'flat'].forEach(m => {
-        const btn = document.getElementById(`billing-${m}`);
-        if (m === mode) {
-          btn.className = "px-3 py-1 text-xs font-semibold rounded-lg bg-white text-zinc-900 shadow-2xs transition cursor-pointer";
-        } else {
-          btn.className = "px-3 py-1 text-xs font-semibold rounded-lg text-zinc-500 hover:text-zinc-900 transition cursor-pointer";
-        }
-      });
-
-      document.getElementById('th-qty').innerText = mode === 'hourly' ? 'Hours / Qty' : 'Quantity';
-      document.getElementById('th-rate').innerText = mode === 'hourly' ? 'Rate' : 'Unit Price';
-      calculateTotals();
-    }
-
-    function updateCurrency() {
-      currencySymbol = document.getElementById('currency-select').value;
-      calculateTotals();
-      renderLineItems();
-    }
-
-    function setAccentColor(hex) {
-      accentColor = hex;
-      document.documentElement.style.setProperty('--brand-color', hex);
-      triggerAutoSave();
-    }
-
-    function toggleVaultSection() {
-      const show = document.getElementById('toggle-vault').checked;
-      document.getElementById('vault-section').style.display = show ? 'block' : 'none';
-    }
-
-    function toggleLateFee() {
-      const show = document.getElementById('toggle-latefee').checked;
-      document.getElementById('latefee-clause').style.display = show ? 'block' : 'none';
-    }
-
-    function toggleQRSection() {
-      const show = document.getElementById('toggle-qr').checked;
-      document.getElementById('qr-section').style.display = show ? 'block' : 'none';
-    }
-
-    // --- LINE ITEMS LOGIC ---
-    function renderLineItems() {
-      const tbody = document.getElementById('line-items-tbody');
-      tbody.innerHTML = '';
-
-      lineItems.forEach((item, index) => {
-        const amount = item.qty * item.rate;
-        const tr = document.createElement('tr');
-        tr.className = 'border-b border-zinc-100 group';
-        tr.innerHTML = `
-          <td class="py-3 pr-4">
-            <input type="text" value="${item.desc}" oninput="updateLineItem(${index}, 'desc', this.value)" placeholder="Description of service or deliverable..." class="paper-input">
-          </td>
-          <td class="py-3 px-2 w-24">
-            <input type="number" value="${item.qty}" min="0" step="any" oninput="updateLineItem(${index}, 'qty', this.value)" class="paper-input text-center">
-          </td>
-          <td class="py-3 px-2 w-28">
-            <input type="number" value="${item.rate}" min="0" step="any" oninput="updateLineItem(${index}, 'rate', this.value)" class="paper-input text-right">
-          </td>
-          <td class="py-3 pl-4 w-28 text-right font-semibold text-xs text-zinc-900">
-            ${currencySymbol}${amount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-          </td>
-          <td class="no-print w-10 text-right">
-            <button onclick="removeLineItem(${index})" class="text-zinc-300 hover:text-red-500 font-bold px-1 transition cursor-pointer">×</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-      calculateTotals();
-    }
-
-    function addLineItem() {
-      lineItems.push({ desc: '', qty: 1, rate: 0 });
-      renderLineItems();
-      triggerAutoSave();
-    }
-
-    function removeLineItem(index) {
-      if (lineItems.length > 1) {
-        lineItems.splice(index, 1);
-        renderLineItems();
-        triggerAutoSave();
-      }
-    }
-
-    function updateLineItem(index, field, value) {
-      lineItems[index][field] = field === 'desc' ? value : parseFloat(value) || 0;
-      renderLineItems();
-      calculateTotals();
-      triggerAutoSave();
-    }
-
-    // --- CALCULATIONS ---
-    function calculateTotals() {
-      let subtotal = lineItems.reduce((acc, item) => acc + (item.qty * item.rate), 0);
-      const taxRate = parseFloat(document.getElementById('tax-rate').value) || 0;
-      const taxAmount = subtotal * (taxRate / 100);
-      const total = subtotal + taxAmount;
-      const deposit = total / 2;
-
-      document.getElementById('calc-subtotal').innerText = `${currencySymbol}${subtotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-      document.getElementById('calc-tax').innerText = `${currencySymbol}${taxAmount.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-      document.getElementById('calc-total').innerText = `${currencySymbol}${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-      document.getElementById('calc-deposit').innerText = `${currencySymbol}${deposit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-    }
-
-    // --- LOGO UPLOAD ---
-    function handleLogoUpload(event) {
-      const file = event.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-          customLogoBase64 = e.target.result;
-          const box = document.getElementById('logo-preview-box');
-          box.innerHTML = `<img src="${customLogoBase64}" class="w-full h-full object-cover">`;
-          triggerAutoSave();
-        };
-        reader.readAsDataURL(file);
-      }
-    }
-
-    // --- QR CODE ---
-    function updateQRCode() {
-      const link = document.getElementById('stripe-link').value.trim();
-      const qrBox = document.getElementById('qr-code-box');
-      qrBox.innerHTML = '';
-      if (link) {
-        new QRCode(qrBox, {
-          text: link,
-          width: 88,
-          height: 88,
-          colorDark: "#18181b",
-          colorLight: "#ffffff",
-          correctLevel: QRCode.CorrectLevel.M
-        });
-      } else {
-        qrBox.innerHTML = '<span class="text-[10px] text-zinc-400">QR Code</span>';
-      }
-    }
-
-    // --- LOCAL STORAGE & AUTO SAVE & HISTORY ---
-    function triggerAutoSave() {
-      const indicator = document.getElementById('autosave-indicator');
-      indicator.innerText = 'Saving...';
-      
-      const formData = {
-        docMode, billingMode, currencySymbol, accentColor, lineItems, customLogoBase64,
-        senderName: document.getElementById('sender-name').value,
-        senderRole: document.getElementById('sender-role').value,
-        senderContact: document.getElementById('sender-contact').value,
-        invoiceNo: document.getElementById('invoice-no').value,
-        issuedDate: document.getElementById('issued-date').value,
-        dueDate: document.getElementById('due-date').value,
-        clientName: document.getElementById('client-name').value,
-        clientAddress: document.getElementById('client-address').value,
-        projectTitle: document.getElementById('project-title').value,
-        projectMilestone: document.getElementById('project-milestone').value,
-        vaultDesc: document.getElementById('vault-desc').value,
-        vaultUrl: document.getElementById('vault-url').value,
-        stripeLink: document.getElementById('stripe-link').value,
-        paymentNotes: document.getElementById('payment-notes').value,
-        taxRate: document.getElementById('tax-rate').value
-      };
-
-      localStorage.setItem('easy_invoice_draft', JSON.stringify(formData));
-
-      setTimeout(() => {
-        indicator.innerText = 'Saved';
-      }, 400);
-    }
-
-    function loadFromLocalStorage() {
-      const saved = localStorage.getItem('easy_invoice_draft');
-      if (!saved) return;
-      try {
-        const d = JSON.parse(saved);
-        if (d.docMode) setDocMode(d.docMode);
-        if (d.billingMode) setBillingMode(d.billingMode);
-        if (d.currencySymbol) { currencySymbol = d.currencySymbol; document.getElementById('currency-select').value = d.currencySymbol; }
-        if (d.accentColor) setAccentColor(d.accentColor);
-        if (d.lineItems) { lineItems = d.lineItems; renderLineItems(); }
-        if (d.customLogoBase64) {
-          customLogoBase64 = d.customLogoBase64;
-          document.getElementById('logo-preview-box').innerHTML = `<img src="${customLogoBase64}" class="w-full h-full object-cover">`;
-        }
-        if (d.senderName) document.getElementById('sender-name').value = d.senderName;
-        if (d.senderRole) document.getElementById('sender-role').value = d.senderRole;
-        if (d.senderContact) document.getElementById('sender-contact').value = d.senderContact;
-        if (d.invoiceNo) document.getElementById('invoice-no').value = d.invoiceNo;
-        if (d.issuedDate) document.getElementById('issued-date').value = d.issuedDate;
-        if (d.dueDate) document.getElementById('due-date').value = d.dueDate;
-        if (d.clientName) document.getElementById('client-name').value = d.clientName;
-        if (d.clientAddress) document.getElementById('client-address').value = d.clientAddress;
-        if (d.projectTitle) document.getElementById('project-title').value = d.projectTitle;
-        if (d.projectMilestone) document.getElementById('project-milestone').value = d.projectMilestone;
-        if (d.vaultDesc) document.getElementById('vault-desc').value = d.vaultDesc;
-        if (d.vaultUrl) document.getElementById('vault-url').value = d.vaultUrl;
-        if (d.stripeLink) { document.getElementById('stripe-link').value = d.stripeLink; updateQRCode(); }
-        if (d.paymentNotes) document.getElementById('payment-notes').value = d.paymentNotes;
-        if (d.taxRate) document.getElementById('tax-rate').value = d.taxRate;
-        calculateTotals();
-      } catch (e) {
-        console.error('Error loading draft', e);
-      }
-    }
-
-    function recordInvoiceToHistory() {
-      const invNo = document.getElementById('invoice-no').value || 'INV-001';
-      const client = document.getElementById('client-name').value || 'Unnamed Client';
-      const date = document.getElementById('issued-date').value || new Date().toLocaleDateString();
-      const total = document.getElementById('calc-total').innerText;
-
-      const newRecord = {
-        id: invNo,
-        client: client,
-        date: date,
-        total: total,
-        status: 'Sent',
-        timestamp: new Date().toISOString()
-      };
-
-      invoicesHistory = [newRecord, ...invoicesHistory.filter(item => item.id !== invNo)];
-      localStorage.setItem('easy_invoice_history', JSON.stringify(invoicesHistory));
-      
-      // Sync to cloud if user is signed in
-      if (currentUser && supabaseClient) {
-        supabaseClient.from('invoices').upsert({
-          user_id: currentUser.id,
-          invoice_no: newRecord.id,
-          client_name: newRecord.client,
-          issued_date: newRecord.date,
-          total_amount: newRecord.total,
-          status: newRecord.status
-        }).then(({ error }) => {
-          if (error) console.error("Cloud sync failed:", error);
-        });
-      }
-    }
-
-    function renderHistoryTable() {
-      const tbody = document.getElementById('history-table-body');
-      tbody.innerHTML = '';
-
-      if (invoicesHistory.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-zinc-400 text-xs">No invoices recorded yet. Download a PDF or copy a link to log one!</td></tr>`;
-        return;
-      }
-
-      invoicesHistory.forEach((inv, index) => {
-        const tr = document.createElement('tr');
-        tr.className = 'border-b border-zinc-100 hover:bg-zinc-50/50 transition';
-        const badgeColor = inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800';
-        
-        tr.innerHTML = `
-          <td class="py-3 px-4 font-bold text-xs text-zinc-900">${inv.id}</td>
-          <td class="py-3 px-4 text-xs font-medium text-zinc-700">${inv.client}</td>
-          <td class="py-3 px-4 text-xs text-zinc-500">${inv.date}</td>
-          <td class="py-3 px-4 text-xs font-semibold text-zinc-900">${inv.total}</td>
-          <td class="py-3 px-4 text-xs">
-            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeColor}">${inv.status}</span>
-          </td>
-          <td class="py-3 px-4 text-right space-x-2 text-xs font-semibold">
-            <button onclick="toggleInvoiceStatus(${index})" class="text-zinc-600 hover:text-zinc-900 underline cursor-pointer">Toggle Status</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
-    function toggleInvoiceStatus(index) {
-      invoicesHistory[index].status = invoicesHistory[index].status === 'Paid' ? 'Sent' : 'Paid';
-      localStorage.setItem('easy_invoice_history', JSON.stringify(invoicesHistory));
-      renderHistoryTable();
-    }
-
-    function clearAllHistory() {
-      if (confirm('Are you sure you want to clear all invoice history?')) {
-        invoicesHistory = [];
-        localStorage.removeItem('easy_invoice_history');
-        renderHistoryTable();
-      }
-    }
-
-    // --- ACTIONS ---
-    function copyShareableClientLink() {
-      recordInvoiceToHistory();
-      const btnText = document.getElementById('copy-link-text');
-      navigator.clipboard.writeText(window.location.href);
-      btnText.innerText = 'Copied Client Link!';
-      setTimeout(() => { btnText.innerText = 'Copy Client Link'; }, 2000);
-    }
-
-    function downloadPDF() {
-      recordInvoiceToHistory();
-      window.print();
-    }
-
-    function resetDefaults() {
-      if (confirm('Reset invoice form?')) {
-        localStorage.removeItem('easy_invoice_draft');
-        location.reload();
-      }
-    }
-
-    // --- CLIENT PORTAL RENDER ---
-    function renderClientPortal() {
-      const container = document.getElementById('client-render-paper');
-      const senderName = document.getElementById('sender-name').value || 'Service Provider';
-      const senderRole = document.getElementById('sender-role').value || '';
-      const clientName = document.getElementById('client-name').value || 'Client';
-      const invNo = document.getElementById('invoice-no').value || 'INV-001';
-      const total = document.getElementById('calc-total').innerText;
-      const stripeLink = document.getElementById('stripe-link').value;
-      const vaultDesc = document.getElementById('vault-desc').value;
-      const vaultUrl = document.getElementById('vault-url').value;
-
-      container.innerHTML = `
-        <div class="flex justify-between items-start pb-6 border-b border-zinc-100">
-          <div>
-            <h2 class="text-xl font-black text-zinc-900">${senderName}</h2>
-            <p class="text-xs text-zinc-500">${senderRole}</p>
-          </div>
-          <div class="text-right">
-            <span class="text-xs font-semibold text-zinc-400">INVOICE</span>
-            <h3 class="text-lg font-bold text-zinc-900">${invNo}</h3>
-          </div>
-        </div>
-
-        <div class="py-4 space-y-2 bg-zinc-50 p-4 rounded-xl border border-zinc-100">
-          <span class="block text-[10px] font-bold uppercase tracking-wider text-zinc-400">Prepared For</span>
-          <p class="text-sm font-bold text-zinc-900">${clientName}</p>
-        </div>
-
-        <div class="py-6 border-b border-zinc-100 space-y-4">
-          <h3 class="text-sm font-bold text-zinc-900">Summary of Charges</h3>
-          <div class="flex justify-between items-center text-sm font-bold py-3 border-t border-b border-zinc-200">
-            <span>Total Due</span>
-            <span class="text-base text-zinc-900">${total}</span>
-          </div>
-        </div>
-
-        ${vaultUrl && vaultDesc ? `
-          <div class="p-6 bg-emerald-50/80 border border-emerald-200 rounded-2xl space-y-3">
-            <div class="flex items-center gap-2">
-              <span>🔒</span>
-              <h4 class="text-xs font-bold uppercase tracking-wider text-emerald-900">Deliverable Vault (Unlocks upon payment)</h4>
-            </div>
-            <p class="text-xs font-medium text-emerald-800">${vaultDesc}</p>
-            <a href="${vaultUrl}" target="_blank" class="inline-block px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition">Access Deliverable File</a>
-          </div>
-        ` : ''}
-
-        ${stripeLink ? `
-          <div class="space-y-3 pt-4">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Online Payment</h3>
-            <a href="${stripeLink}" target="_blank" class="block w-full text-center py-3 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl text-xs font-bold transition">Pay Now via Stripe / Card</a>
-          </div>
-        ` : ''}
-      `;
-    }
-  </script>
-</body>
-</html>
+        <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <button onclick="resetDefaults()" class="text-gray-400 hover:text-black text-xs underline cursor-pointer font-mono">Reset</button>
+          <button onclick="downloadPDF()" class="brand-bg hover:opacity-90 text-white px-4 py-2 text-xs font-bold
