@@ -30,22 +30,29 @@
       border-bottom: 1px solid #d1d5db; 
       border-radius: 0; 
       padding: 4px 8px; 
-      transition: all 0.15s ease; 
+      transition: border-color 0.15s ease, background-color 0.15s ease; 
       width: 100%; 
       font-family: 'JetBrains Mono', monospace;
       font-size: 13px; 
     }
     .paper-input:hover { border-bottom-color: #9ca3af; background: #f3f4f6; }
-    .paper-input:focus { outline: none; border-bottom-color: #000000; background: transparent; }
+    .paper-input:focus { outline: none; border-bottom-color: var(--brand-color); background: #ffffff; }
     
     .brand-bg { background-color: var(--brand-color); }
     .brand-text { color: var(--brand-color); }
+    .brand-border { border-color: var(--brand-color); }
+
+    tr.dragging { opacity: 0.4; background: #e5e7eb; }
+    tr.drag-over { border-top: 2px solid #000000 !important; }
+
+    .print-only { display: none; }
     
     /* Strict print layout */
     @media print {
       @page { size: auto; margin: 10mm; }
       body { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
       .no-print { display: none !important; }
+      .print-only { display: block !important; }
       #invoice-paper { border: none !important; margin: 0 !important; padding: 0 !important; max-width: 100% !important; width: 100% !important; }
       .paper-input { border: 1px solid transparent !important; background: transparent !important; padding: 2px 0 !important; }
     }
@@ -53,12 +60,16 @@
 </head>
 <body class="selection:bg-black selection:text-white">
 
-  <!-- TOP NAVIGATION BAR (Technical & Flat) -->
+  <!-- TOP NAVIGATION BAR -->
   <header class="no-print border-b border-gray-300 bg-white sticky top-0 z-40">
     <div class="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
       <div class="flex items-center gap-3">
         <div class="w-7 h-7 bg-black text-white flex items-center justify-center font-mono font-bold text-sm">E</div>
         <span class="font-bold tracking-tight text-black text-sm uppercase">Easy Invoice</span>
+        <button onclick="openCommandPalette()" class="hidden md:inline-flex items-center gap-2 ml-2 px-2.5 py-1 bg-gray-100 hover:bg-gray-200 border border-gray-300 text-[10px] font-mono text-gray-600 cursor-pointer transition" title="Open Command Palette (Ctrl+K or Cmd+K)">
+          <span>CMD_PALETTE</span>
+          <kbd class="px-1 bg-white border border-gray-300 text-[9px] font-bold text-black">⌘K</kbd>
+        </button>
       </div>
 
       <div class="flex items-center bg-gray-100 p-0.5 border border-gray-300">
@@ -73,40 +84,95 @@
         </button>
       </div>
 
-      <div class="flex items-center gap-3 text-sm">
-        <button id="auth-btn" onclick="openAuthModal()" class="px-4 py-1 border border-black text-xs font-semibold text-black hover:bg-black hover:text-white transition cursor-pointer">
+      <div class="flex items-center gap-2.5 text-sm">
+        <button id="auth-btn" onclick="openAuthModal()" class="px-3.5 py-1 border border-black text-xs font-mono font-semibold text-black hover:bg-black hover:text-white transition cursor-pointer uppercase">
           Sign In
         </button>
-        <button onclick="copyShareableClientLink()" id="copy-link-btn" class="px-4 py-1 bg-black text-white text-xs font-semibold hover:bg-gray-800 transition cursor-pointer font-mono">
+        <button onclick="copyShareableClientLink()" id="copy-link-btn" class="px-3.5 py-1 bg-black text-white text-xs font-semibold hover:bg-gray-800 transition cursor-pointer font-mono">
           <span id="copy-link-text">COPY_LINK</span>
         </button>
       </div>
     </div>
   </header>
 
+  <!-- COMMAND PALETTE MODAL (CMD+K / CTRL+K) -->
+  <div id="cmd-modal" class="hidden fixed inset-0 z-50 flex items-start justify-center pt-20 bg-gray-900/50 no-print" onclick="if(event.target === this) closeCommandPalette()">
+    <div class="bg-white border-2 border-black max-w-lg w-full shadow-2xl overflow-hidden font-mono">
+      <div class="flex items-center border-b border-gray-300 px-3 py-2 bg-gray-50">
+        <span class="text-xs font-bold text-black mr-2">&gt;_</span>
+        <input type="text" id="cmd-input" placeholder="Type a command (e.g. new, github, print, client, sync)..." class="w-full bg-transparent text-xs text-black focus:outline-none" oninput="filterCommands()" onkeydown="handleCommandKeys(event)">
+        <button onclick="closeCommandPalette()" class="text-[10px] text-gray-400 hover:text-black border border-gray-300 px-1.5 py-0.5 ml-2 cursor-pointer">ESC</button>
+      </div>
+      <div id="cmd-list" class="max-h-64 overflow-y-auto divide-y divide-gray-100 text-xs">
+        <!-- Populated dynamically -->
+      </div>
+      <div class="px-3 py-1.5 bg-gray-100 border-t border-gray-300 text-[10px] text-gray-500 flex justify-between">
+        <span>↑↓ TO NAVIGATE</span>
+        <span>ENTER TO EXECUTE</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- GITHUB IMPORT MODAL -->
+  <div id="git-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 no-print" onclick="if(event.target === this) closeGitModal()">
+    <div class="bg-white p-6 border-2 border-black max-w-md w-full relative font-mono">
+      <button onclick="closeGitModal()" class="absolute top-3 right-4 text-gray-400 hover:text-black text-lg font-bold cursor-pointer">&times;</button>
+      <h2 class="text-sm font-bold text-black mb-1 uppercase tracking-widest">GitHub Commit / PR Importer</h2>
+      <p class="text-[11px] text-gray-500 mb-4">Paste a public GitHub PR/Commit URL or shorthand (e.g. <code class="bg-gray-100 px-1">vercel/next.js#1234</code>)</p>
+      <div class="space-y-3">
+        <input type="text" id="git-input" placeholder="https://github.com/owner/repo/pull/42" class="border border-gray-300 w-full p-2 text-xs focus:outline-none focus:border-black" onkeydown="if(event.key==='Enter') importFromGitHub()">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-[10px] text-gray-400 uppercase mb-1">Hours / Qty</label>
+            <input type="text" id="git-qty" value="1" class="border border-gray-300 w-full p-1.5 text-xs focus:outline-none focus:border-black">
+          </div>
+          <div>
+            <label class="block text-[10px] text-gray-400 uppercase mb-1">Rate</label>
+            <input type="text" id="git-rate" value="100" class="border border-gray-300 w-full p-1.5 text-xs focus:outline-none focus:border-black">
+          </div>
+        </div>
+        <p id="git-status" class="text-[11px] text-gray-500 hidden"></p>
+        <div class="flex justify-end gap-2 pt-2">
+          <button onclick="closeGitModal()" class="px-3 py-1.5 border border-gray-300 text-xs font-bold uppercase cursor-pointer">Cancel</button>
+          <button onclick="importFromGitHub()" id="git-submit-btn" class="px-4 py-1.5 bg-black text-white text-xs font-bold uppercase cursor-pointer hover:bg-gray-800">Fetch &amp; Insert</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- AUTHENTICATION MODAL -->
-  <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50">
-    <div class="bg-white p-8 border border-black max-w-sm w-full relative">
+  <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 no-print" onclick="if(event.target === this) closeAuthModal()">
+    <div class="bg-white p-8 border-2 border-black max-w-sm w-full relative">
       <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-black text-xl font-bold cursor-pointer font-mono">&times;</button>
       <h2 class="text-lg font-bold text-black mb-1 uppercase tracking-tight">System Access</h2>
-      <p class="text-xs text-gray-500 mb-6 font-mono">Authenticate to sync records to the cloud.</p>
+      <p id="auth-subtitle" class="text-xs text-gray-500 mb-6 font-mono">Authenticate to sync records to the cloud.</p>
       
-      <div class="space-y-4">
+      <div id="auth-form-box" class="space-y-4">
         <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Email</label>
+          <label class="block text-xs font-bold text-gray-700 mb-1 uppercase font-mono">Email</label>
           <input type="email" id="auth-email" placeholder="sys@admin.com" class="font-mono text-sm border border-gray-300 w-full p-2 focus:outline-none focus:border-black">
         </div>
         <div>
-          <label class="block text-xs font-bold text-gray-700 mb-1 uppercase">Password</label>
-          <input type="password" id="auth-password" placeholder="••••••••" class="font-mono text-sm border border-gray-300 w-full p-2 focus:outline-none focus:border-black">
+          <label class="block text-xs font-bold text-gray-700 mb-1 uppercase font-mono">Password</label>
+          <input type="password" id="auth-password" placeholder="••••••••" class="font-mono text-sm border border-gray-300 w-full p-2 focus:outline-none focus:border-black" onkeydown="if(event.key==='Enter') handleLogin()">
         </div>
         
-        <div class="pt-4 flex gap-2">
+        <div class="pt-4 flex gap-2 font-mono">
           <button onclick="handleLogin()" class="flex-1 bg-black text-white py-2 text-xs font-bold hover:bg-gray-800 transition cursor-pointer uppercase">Login</button>
           <button onclick="handleSignUp()" class="flex-1 bg-white border border-black text-black py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer uppercase">Sign Up</button>
         </div>
-        <p id="auth-error" class="text-xs text-red-600 mt-2 hidden font-mono"></p>
       </div>
+
+      <div id="auth-logged-in-box" class="hidden space-y-4 font-mono">
+        <div class="p-3 bg-gray-50 border border-gray-300 text-xs">
+          <span class="block text-[10px] text-gray-400 uppercase">Active Session</span>
+          <span id="auth-user-email" class="font-bold text-black break-all"></span>
+        </div>
+        <button onclick="fetchCloudInvoices()" class="w-full border border-black text-black py-2 text-xs font-bold hover:bg-gray-100 transition cursor-pointer uppercase">Sync Cloud Ledger Now</button>
+        <button onclick="handleLogout()" class="w-full bg-red-600 text-white py-2 text-xs font-bold hover:bg-red-700 transition cursor-pointer uppercase">Terminate Session (Logout)</button>
+      </div>
+
+      <p id="auth-error" class="text-xs text-red-600 mt-3 hidden font-mono"></p>
     </div>
   </div>
 
@@ -137,10 +203,11 @@
           <div>
             <label class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-500 mb-1.5">Currency</label>
             <select id="currency-select" onchange="updateCurrency()" class="bg-gray-100 border border-gray-300 text-black text-xs font-mono font-semibold px-3 py-1 outline-none cursor-pointer">
-              <option value="$">USD</option>
-              <option value="€">EUR</option>
-              <option value="£">GBP</option>
-              <option value="CA$">CAD</option>
+              <option value="$">USD ($)</option>
+              <option value="€">EUR (€)</option>
+              <option value="£">GBP (£)</option>
+              <option value="CA$">CAD (CA$)</option>
+              <option value="A$">AUD (A$)</option>
             </select>
           </div>
 
@@ -155,6 +222,528 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-3 w-full sm:w-auto justify-end">
-          <button onclick="resetDefaults()" class="text-gray-400 hover:text-black text-xs underline cursor-pointer font-mono">Reset</button>
-          <button onclick="downloadPDF()" class="brand-bg hover:opacity-90 text-white px-4 py-2 text-xs font-bold
+        <div class="flex items-center gap-3 w-full sm:w-auto justify-end font-mono">
+          <button onclick="newInvoice()" class="px-3 py-2 border border-gray-300 hover:border-black text-black text-xs font-bold uppercase cursor-pointer transition" title="Start next invoice keeping default provider info">New_Inv</button>
+          <button onclick="downloadPDF()" class="brand-bg hover:opacity-90 text-white px-4 py-2 text-xs font-bold uppercase tracking-wider transition cursor-pointer flex items-center gap-2">
+            <span>PRINT_PDF</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- TOGGLES & SHORTCUT HINTS -->
+      <div class="flex flex-wrap items-center gap-6 mt-4 px-1 text-[11px] font-mono text-gray-600 uppercase tracking-tight">
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" id="toggle-vault" checked onchange="toggleVaultSection()" class="border-gray-400 text-black focus:ring-black">
+          <span>Enable_Vault</span>
+        </label>
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" id="toggle-latefee" checked onchange="toggleLateFee()" class="border-gray-400 text-black focus:ring-black">
+          <span>Late_Fee_Clause</span>
+        </label>
+        <label class="inline-flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" id="toggle-qr" checked onchange="toggleQRSection()" class="border-gray-400 text-black focus:ring-black">
+          <span>QR_Payment</span>
+        </label>
+        <span class="hidden lg:inline text-[10px] text-gray-400">SHORTCUTS: [⌘K] PALETTE · [SHIFT+ENTER] NEW ROW · [⌘S] SYNC</span>
+        <span id="autosave-indicator" class="ml-auto text-[10px] text-emerald-600 font-bold flex items-center gap-1">STATUS: OK</span>
+      </div>
+    </section>
+
+    <!-- INVOICE PAPER SHEET -->
+    <main class="max-w-3xl mx-auto px-4 mb-20">
+      <div id="invoice-paper" class="bg-white border border-gray-300 p-8 sm:p-12 transition-all">
+        
+        <!-- HEADER / LOGO & SENDER -->
+        <div class="flex flex-col sm:flex-row justify-between items-start gap-6 pb-8 border-b-2 border-black">
+          <div class="space-y-2.5 w-full sm:w-1/2">
+            <div class="flex items-center justify-between no-print">
+              <span class="text-[10px] font-bold font-mono uppercase tracking-widest text-gray-400">Provider Entity</span>
+              <button onclick="saveProviderDefaults()" id="pin-default-btn" class="text-[10px] font-mono text-gray-500 hover:text-black border border-gray-300 hover:border-black px-1.5 py-0.5 uppercase cursor-pointer transition" title="Save your business details as permanent default">
+                [PIN_DEFAULT]
+              </button>
+            </div>
+            <div class="flex items-center gap-3 group">
+              <div id="logo-container" class="relative">
+                <input type="file" id="logo-file-input" accept="image/*" class="hidden" onchange="handleLogoUpload(event)">
+                <div onclick="document.getElementById('logo-file-input').click()" id="logo-preview-box" class="w-12 h-12 border border-gray-300 hover:border-black bg-gray-50 flex flex-col items-center justify-center text-gray-400 cursor-pointer overflow-hidden transition">
+                  <span class="text-[10px] font-bold font-mono">+IMG</span>
+                </div>
+              </div>
+              <div class="flex-1">
+                <input type="text" id="sender-name" placeholder="PROVIDER / ENTITY NAME" class="paper-input font-bold text-sm uppercase tracking-wide text-black" oninput="triggerAutoSave()">
+              </div>
+            </div>
+            <div>
+              <input type="text" id="sender-role" placeholder="IDENTIFICATION / ROLE (e.g. Mechanical Systems Engineer)" class="paper-input text-xs text-gray-500 font-mono" oninput="triggerAutoSave()">
+            </div>
+            <div>
+              <textarea id="sender-contact" placeholder="Contact Details & Tax IDs..." rows="2" class="paper-input text-xs text-gray-600 resize-none font-mono" oninput="triggerAutoSave()"></textarea>
+            </div>
+          </div>
+
+          <div class="w-full sm:w-auto text-left sm:text-right space-y-2">
+            <h1 id="doc-title-display" class="text-3xl font-black tracking-tighter uppercase brand-text">INVOICE</h1>
+            <div class="flex sm:justify-end items-center gap-2">
+              <span class="text-[10px] font-bold font-mono text-gray-400 uppercase">REF_NO</span>
+              <input type="text" id="invoice-no" value="INV-0001" class="paper-input w-28 text-right font-bold text-xs" oninput="triggerAutoSave()">
+            </div>
+            <div class="flex sm:justify-end items-center gap-2">
+              <span class="text-[10px] font-bold font-mono text-gray-400 uppercase">ISSUED</span>
+              <input type="date" id="issued-date" class="paper-input w-36 text-right text-xs" oninput="triggerAutoSave()">
+            </div>
+            <div class="flex sm:justify-end items-center gap-2">
+              <span class="text-[10px] font-bold font-mono text-gray-400 uppercase">DUE_BY</span>
+              <input type="date" id="due-date" class="paper-input w-36 text-right text-xs" oninput="triggerAutoSave()">
+            </div>
+          </div>
+        </div>
+
+        <!-- BILLED TO (WITH ADDRESS BOOK AUTOCOMPLETE) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 py-8 border-b border-gray-300">
+          <div class="space-y-2 relative">
+            <div class="flex items-center justify-between">
+              <span class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-400">Target Entity</span>
+              <button onclick="saveCurrentClientToBook()" id="save-client-btn" class="no-print text-[10px] font-mono text-gray-500 hover:text-black border border-gray-300 hover:border-black px-1.5 py-0.5 uppercase cursor-pointer transition" title="Save client to address book for instant autocomplete">
+                [+BOOK]
+              </button>
+            </div>
+            <input type="text" id="client-name" list="client-address-book" placeholder="Client Name (Type or select saved)" class="paper-input font-bold text-sm text-black uppercase" oninput="handleClientAutocomplete(this.value); triggerAutoSave()">
+            <datalist id="client-address-book"></datalist>
+            <textarea id="client-address" placeholder="Billing Address & Routing..." rows="2" class="paper-input text-xs text-gray-600 resize-none font-mono" oninput="triggerAutoSave()"></textarea>
+          </div>
+          <div class="space-y-2">
+            <span class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-400">Project Parameters</span>
+            <input type="text" id="project-title" placeholder="Project Name" class="paper-input font-semibold text-sm text-black uppercase" oninput="triggerAutoSave()">
+            <input type="text" id="project-milestone" placeholder="Milestone ID / PO Number" class="paper-input text-xs text-gray-600 font-mono" oninput="triggerAutoSave()">
+          </div>
+        </div>
+
+        <!-- LINE ITEMS TABLE (DRAG & DROP + LIVE MATH + MARKDOWN) -->
+        <div class="py-8 border-b border-gray-300">
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="border-b border-black text-[10px] font-bold font-mono uppercase tracking-widest text-gray-500">
+                  <th class="no-print w-6 py-2"></th>
+                  <th class="py-2 pr-4">Description <span class="no-print font-normal text-[9px] text-gray-400">(Markdown supported)</span></th>
+                  <th id="th-qty" class="py-2 px-2 w-28 text-center" title="Supports live math e.g. 4.5 + 2">QTY/HRS <span class="no-print text-[9px] text-gray-400">(±)</span></th>
+                  <th id="th-rate" class="py-2 px-2 w-28 text-right" title="Supports live math e.g. 120 * 1.5">RATE <span class="no-print text-[9px] text-gray-400">(±)</span></th>
+                  <th class="py-2 pl-4 w-28 text-right">AMT</th>
+                  <th class="no-print w-8"></th>
+                </tr>
+              </thead>
+              <tbody id="line-items-tbody">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="no-print mt-4 flex flex-wrap items-center gap-2">
+            <button onclick="addLineItem()" class="px-3 py-1 border border-gray-300 hover:border-black text-[10px] font-bold font-mono uppercase text-black bg-gray-50 hover:bg-gray-200 transition cursor-pointer">
+              [+] ADD_ROW
+            </button>
+            <button onclick="openGitModal()" class="px-3 py-1 border border-gray-300 hover:border-black text-[10px] font-bold font-mono uppercase text-gray-700 bg-white hover:bg-gray-100 transition cursor-pointer">
+              [GIT_IMPORT]
+            </button>
+            <span class="ml-auto text-[10px] font-mono text-gray-400 hidden sm:inline">Tip: Type math like <code class="text-black">4 + 2.5</code> in QTY or press <code class="text-black">Shift+Enter</code> for new row</span>
+          </div>
+        </div>
+
+        <!-- PAY-TO-UNLOCK DELIVERABLE VAULT SECTION -->
+        <div id="vault-section" class="py-6 border-b border-gray-300 bg-gray-50 -mx-8 sm:-mx-12 px-8 sm:px-12 my-6">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="text-sm">🔒</span>
+            <h3 class="text-[11px] font-bold font-mono uppercase tracking-widest text-black">Encrypted Deliverable Vault</h3>
+            <span class="ml-auto text-[9px] font-mono border border-black text-black px-2 py-0.5 uppercase tracking-widest">Locked</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-400 mb-1">Asset_ID</label>
+              <input type="text" id="vault-desc" placeholder="Source_Code_Archive.zip" class="paper-input bg-white text-xs" oninput="triggerAutoSave()">
+            </div>
+            <div>
+              <label class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-400 mb-1">Secure_URI</label>
+              <input type="text" id="vault-url" placeholder="https://..." class="paper-input bg-white text-xs" oninput="triggerAutoSave()">
+            </div>
+          </div>
+        </div>
+
+        <!-- SCAN TO PAY & PAYMENT INSTRUCTIONS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8 py-8 border-b-2 border-black">
+          <div id="qr-section" class="space-y-3">
+            <span class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-400">Payment Routing</span>
+            <div class="flex items-center gap-4">
+              <div id="qr-code-box" class="w-20 h-20 bg-white border border-gray-300 p-1 flex items-center justify-center text-center text-[9px] font-mono text-gray-400">
+                <!-- QR Code rendered here -->
+              </div>
+              <div class="flex-1 space-y-2">
+                <input type="text" id="stripe-link" placeholder="Stripe / Payment URI..." class="paper-input text-xs" oninput="updateQRCode(); triggerAutoSave()">
+                <p class="text-[10px] font-mono text-gray-500 leading-normal uppercase">Scan matrix for instant transfer.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <span class="block text-[10px] font-bold font-mono uppercase tracking-widest text-gray-400">Terms / Notes</span>
+            <textarea id="payment-notes" placeholder="Routing data..." rows="4" class="paper-input text-xs text-gray-600 resize-none h-20" oninput="triggerAutoSave()">Remit payment within 14 days. End of transmission.</textarea>
+          </div>
+        </div>
+
+        <!-- TOTALS & CALCULATIONS -->
+        <div class="pt-6 flex justify-end">
+          <div class="w-full sm:w-64 space-y-1 text-right font-mono">
+            <div class="flex justify-between text-xs text-gray-500">
+              <span>SUBTOTAL</span>
+              <span id="calc-subtotal" class="font-bold text-black">$0.00</span>
+            </div>
+            <div class="flex justify-between items-center text-xs text-gray-500">
+              <span class="flex items-center gap-1 uppercase">Tax(%) <input type="text" id="tax-rate" value="0" class="w-12 paper-input text-right py-0 px-1" oninput="calculateTotals(); triggerAutoSave()" onblur="this.value = evalMath(this.value); calculateTotals()"></span>
+              <span id="calc-tax" class="font-bold text-black">$0.00</span>
+            </div>
+            <div class="flex justify-between text-sm font-bold text-black pt-2 mt-2 border-t border-black">
+              <span id="total-label">TOTAL_DUE</span>
+              <span id="calc-total" class="text-base brand-text">$0.00</span>
+            </div>
+            <div id="deposit-due-row" class="hidden flex justify-between text-xs font-bold brand-text pt-1">
+              <span>DEP_REQ (50%)</span>
+              <span id="calc-deposit">$0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- FOOTER / LATE FEE CLAUSE -->
+        <div id="latefee-clause" class="mt-12 pt-4 border-t border-gray-300 text-[10px] font-mono text-gray-400 leading-normal uppercase text-center">
+          SYSTEM NOTICE: Overdue accounts subject to 1.5% compounding penalty per 30 cycles.
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- VIEW 2: INVOICES & HISTORY DASHBOARD                              -->
+  <!-- ================================================================= -->
+  <div id="history-view-container" class="hidden max-w-5xl mx-auto px-4 mt-8 mb-20">
+    <div class="bg-white border border-gray-300 p-8">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-black">
+        <div>
+          <h2 class="text-lg font-bold text-black uppercase tracking-widest">Transaction Ledger</h2>
+          <p class="text-[11px] font-mono text-gray-500 mt-1 uppercase">Historical record of all generated financial documents (Local + Supabase Cloud).</p>
+        </div>
+        <div class="flex items-center gap-2 font-mono">
+          <button onclick="fetchCloudInvoices()" class="px-3 py-1 border border-black text-[10px] font-bold uppercase text-black bg-white hover:bg-gray-100 transition cursor-pointer">Sync_Cloud</button>
+          <button onclick="clearAllHistory()" class="px-3 py-1 border border-gray-300 hover:border-red-600 hover:text-red-600 text-[10px] font-bold uppercase text-gray-600 bg-white transition cursor-pointer">Purge_Local</button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse font-mono text-xs">
+          <thead>
+            <tr class="border-b border-black text-[10px] font-bold uppercase tracking-widest text-gray-500 bg-gray-50">
+              <th class="py-3 px-4 border-r border-gray-200">REF_ID</th>
+              <th class="py-3 px-4 border-r border-gray-200">TARGET</th>
+              <th class="py-3 px-4 border-r border-gray-200">TIMESTAMP</th>
+              <th class="py-3 px-4 border-r border-gray-200">VALUE</th>
+              <th class="py-3 px-4 border-r border-gray-200">STATE</th>
+              <th class="py-3 px-4 text-right">ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================= -->
+  <!-- VIEW 3: CLIENT PUBLIC VIEW                                        -->
+  <!-- ================================================================= -->
+  <div id="client-view-container" class="hidden max-w-3xl mx-auto px-4 mt-8 mb-20">
+    <div class="bg-black text-white border border-black p-3 mb-6 flex items-center justify-between gap-4 no-print">
+      <div class="flex items-center gap-3">
+        <span class="w-2 h-2 bg-emerald-500 animate-pulse"></span>
+        <span class="text-[10px] font-bold font-mono uppercase tracking-widest">Public Render Mode — Markdown &amp; Links Active</span>
+      </div>
+      <button onclick="switchAppView('editor')" class="px-3 py-1 border border-gray-600 text-[10px] font-bold font-mono uppercase hover:bg-gray-800 transition cursor-pointer">Return</button>
+    </div>
+
+    <!-- Client Render Paper -->
+    <div id="client-render-paper" class="bg-white border border-gray-300 p-8 sm:p-12 space-y-8 font-mono">
+      <!-- Client view populated dynamically -->
+    </div>
+  </div>
+
+  <!-- QR Code Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  
+  <script>
+    // --- SUPABASE CONFIGURATION ---
+    const SUPABASE_URL = 'https://theeknltrsxktauspbpd.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_pF2KpduQIhc16M4H7MuBzw_E_oRFUz4';
+    let supabaseClient = null;
+    let currentUser = null;
+
+    try {
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch(e) {
+      console.warn("Supabase initialization skipped:", e);
+    }
+
+    // --- STATE MANAGEMENT ---
+    let docMode = 'full'; 
+    let billingMode = 'hourly'; 
+    let currencySymbol = '$';
+    let accentColor = '#000000';
+    let lineItems = [
+      { desc: 'SYSTEM_ARCHITECTURE_V1 — **Core schematic** & `CAD` layout', qty: 1, rate: 0 }
+    ];
+    let customLogoBase64 = '';
+    let draggedRowIndex = null;
+    let invoicesHistory = JSON.parse(localStorage.getItem('easy_invoice_history') || '[]');
+    let savedClients = JSON.parse(localStorage.getItem('easy_invoice_clients') || '[]');
+
+    // --- COMMAND PALETTE DEFINITIONS ---
+    const COMMANDS = [
+      { id: 'new', label: 'NEW_INVOICE — Reset form & increment invoice number', action: () => newInvoice() },
+      { id: 'row', label: 'ADD_LINE_ITEM — Append a new billable row', action: () => addLineItem(true) },
+      { id: 'git', label: 'GITHUB_IMPORT — Pull PR or Commit into line items', action: () => openGitModal() },
+      { id: 'pin', label: 'PIN_PROVIDER_DEFAULT — Save your sender info permanently', action: () => saveProviderDefaults() },
+      { id: 'book', label: 'SAVE_CLIENT — Add current client to autocomplete book', action: () => saveCurrentClientToBook() },
+      { id: 'print', label: 'PRINT_PDF — Export clean technical PDF & log record', action: () => downloadPDF() },
+      { id: 'sync', label: 'SYNC_CLOUD — Push & pull invoices with Supabase', action: () => forceCloudSync() },
+      { id: 'editor', label: 'VIEW: EDITOR — Switch to main invoice builder', action: () => switchAppView('editor') },
+      { id: 'history', label: 'VIEW: LEDGER — View sent & paid invoice history', action: () => switchAppView('history') },
+      { id: 'client', label: 'VIEW: CLIENT_PORTAL — Preview public client view', action: () => switchAppView('client') },
+      { id: 'auth', label: 'ACCOUNT_ACCESS — Open Supabase login / session modal', action: () => openAuthModal() }
+    ];
+    let filteredCommands = [...COMMANDS];
+    let selectedCmdIndex = 0;
+
+    // --- INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('issued-date').valueAsDate = new Date();
+      const dueDateDefault = new Date();
+      dueDateDefault.setDate(dueDateDefault.getDate() + 14);
+      document.getElementById('due-date').valueAsDate = dueDateDefault;
+
+      loadProviderDefaults();
+      loadFromLocalStorage();
+      renderLineItems();
+      calculateTotals();
+      updateQRCode();
+      renderClientDatalist();
+
+      if (supabaseClient) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (session && session.user) {
+          setAuthenticatedUser(session.user);
+          fetchCloudInvoices();
+        }
+      }
+    });
+
+    // --- GLOBAL KEYBOARD SHORTCUTS ---
+    window.addEventListener('keydown', (e) => {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      if (isCmdOrCtrl && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const modal = document.getElementById('cmd-modal');
+        modal.classList.contains('hidden') ? openCommandPalette() : closeCommandPalette();
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        forceCloudSync();
+      } else if (isCmdOrCtrl && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        downloadPDF();
+      } else if (e.key === 'Escape') {
+        closeCommandPalette();
+        closeGitModal();
+        closeAuthModal();
+      }
+    });
+
+    // --- LIVE MATH PARSER ---
+    function evalMath(expr) {
+      if (typeof expr === 'number') return expr;
+      const cleaned = String(expr || '').replace(/[^0-9.+\-*/() ]/g, '').trim();
+      if (!cleaned) return 0;
+      try {
+        const result = Function('"use strict"; return (' + cleaned + ')')();
+        return (typeof result === 'number' && isFinite(result)) ? Math.round(result * 10000) / 10000 : (parseFloat(cleaned) || 0);
+      } catch (e) {
+        return parseFloat(cleaned) || 0;
+      }
+    }
+
+    // --- LIGHTWEIGHT MARKDOWN PARSER ---
+    function parseMarkdown(text) {
+      if (!text) return '';
+      let safe = String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+      safe = safe.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" class="underline font-semibold hover:opacity-80">$1</a>');
+      safe = safe.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-black">$1</strong>');
+      safe = safe.replace(/\*([^*]+)\*/g, '<em class="italic">$1</em>');
+      safe = safe.replace(/`([^`]+)`/g, '<code class="bg-gray-100 border border-gray-300 px-1 py-0.5 text-[11px] font-mono">$1</code>');
+      return safe;
+    }
+
+    function hasMarkdownSyntax(text) {
+      return /(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^\s)]+\))/.test(text || '');
+    }
+
+    // --- COMMAND PALETTE LOGIC ---
+    function openCommandPalette() {
+      const modal = document.getElementById('cmd-modal');
+      const input = document.getElementById('cmd-input');
+      modal.classList.remove('hidden');
+      input.value = '';
+      filteredCommands = [...COMMANDS];
+      selectedCmdIndex = 0;
+      renderCommandList();
+      setTimeout(() => input.focus(), 20);
+    }
+
+    function closeCommandPalette() {
+      document.getElementById('cmd-modal').classList.add('hidden');
+    }
+
+    function filterCommands() {
+      const q = document.getElementById('cmd-input').value.toLowerCase().trim();
+      filteredCommands = COMMANDS.filter(c => c.label.toLowerCase().includes(q) || c.id.includes(q));
+      selectedCmdIndex = 0;
+      renderCommandList();
+    }
+
+    function renderCommandList() {
+      const list = document.getElementById('cmd-list');
+      if (filteredCommands.length === 0) {
+        list.innerHTML = `<div class="p-4 text-gray-400 text-center uppercase">No matching command</div>`;
+        return;
+      }
+      list.innerHTML = filteredCommands.map((cmd, idx) => `
+        <div onclick="executeCommand(${idx})" class="px-4 py-2.5 cursor-pointer flex items-center justify-between ${idx === selectedCmdIndex ? 'bg-black text-white font-bold' : 'text-gray-800 hover:bg-gray-100'}">
+          <span>${cmd.label}</span>
+          <span class="text-[10px] opacity-60">⏎</span>
+        </div>
+      `).join('');
+    }
+
+    function handleCommandKeys(e) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedCmdIndex = (selectedCmdIndex + 1) % Math.max(1, filteredCommands.length);
+        renderCommandList();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedCmdIndex = (selectedCmdIndex - 1 + Math.max(1, filteredCommands.length)) % Math.max(1, filteredCommands.length);
+        renderCommandList();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        executeCommand(selectedCmdIndex);
+      }
+    }
+
+    function executeCommand(idx) {
+      const cmd = filteredCommands[idx];
+      closeCommandPalette();
+      if (cmd && cmd.action) cmd.action();
+    }
+
+    // --- GITHUB PR / COMMIT IMPORTER ---
+    function openGitModal() {
+      document.getElementById('git-modal').classList.remove('hidden');
+      document.getElementById('git-status').classList.add('hidden');
+      setTimeout(() => document.getElementById('git-input').focus(), 20);
+    }
+
+    function closeGitModal() {
+      document.getElementById('git-modal').classList.add('hidden');
+    }
+
+    async function importFromGitHub() {
+      const raw = document.getElementById('git-input').value.trim();
+      const qty = evalMath(document.getElementById('git-qty').value) || 1;
+      const rate = evalMath(document.getElementById('git-rate').value) || 0;
+      const statusEl = document.getElementById('git-status');
+      if (!raw) return;
+
+      statusEl.innerText = 'QUERYING_GITHUB_API...';
+      statusEl.classList.remove('hidden');
+
+      let apiUrl = '';
+      let webUrl = raw;
+      let labelPrefix = 'GIT';
+
+      const prMatch = raw.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/i) || raw.match(/^([^/]+)\/([^#]+)#(\d+)$/);
+      const commitMatch = raw.match(/github\.com\/([^/]+)\/([^/]+)\/commit\/([a-f0-9]+)/i) || raw.match(/^([^/]+)\/([^@]+)@([a-f0-9]+)$/i);
+
+      if (prMatch) {
+        const [, owner, repo, num] = prMatch;
+        apiUrl = `https://api.github.com/repos/${owner}/${repo}/pulls/${num}`;
+        webUrl = `https://github.com/${owner}/${repo}/pull/${num}`;
+        labelPrefix = `${repo}#${num}`;
+      } else if (commitMatch) {
+        const [, owner, repo, sha] = commitMatch;
+        apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${sha}`;
+        webUrl = `https://github.com/${owner}/${repo}/commit/${sha}`;
+        labelPrefix = `${repo}@${sha.substring(0, 7)}`;
+      }
+
+      let finalDesc = `**${labelPrefix}** — [GitHub Reference](${webUrl})`;
+      if (apiUrl) {
+        try {
+          const res = await fetch(apiUrl);
+          if (res.ok) {
+            const data = await res.json();
+            const title = data.title || (data.commit && data.commit.message ? data.commit.message.split('\n')[0] : 'Technical Deliverable');
+            finalDesc = `**[${labelPrefix}](${webUrl})** —${title}`;
+          }
+        } catch (err) {
+          console.warn('GitHub API fallback:', err);
+        }
+      } else {
+        finalDesc = `**GIT_DELIVERABLE** — \`${raw}\``;
+      }
+
+      if (lineItems.length === 1 && lineItems[0].rate === 0 && lineItems[0].desc.includes('SYSTEM_ARCHITECTURE_V1')) {
+        lineItems[0] = { desc: finalDesc, qty, rate };
+      } else {
+        lineItems.push({ desc: finalDesc, qty, rate });
+      }
+
+      renderLineItems();
+      triggerAutoSave();
+      document.getElementById('git-input').value = '';
+      closeGitModal();
+    }
+
+    // --- DEFAULT PROVIDER PINNING ---
+    function saveProviderDefaults() {
+      const defaults = {
+        senderName: document.getElementById('sender-name').value,
+        senderRole: document.getElementById('sender-role').value,
+        senderContact: document.getElementById('sender-contact').value,
+        customLogoBase64,
+        accentColor,
+        currencySymbol
+      };
+      localStorage.setItem('easy_invoice_provider_default', JSON.stringify(defaults));
+      const btn = document.getElementById('pin-default-btn');
+      btn.innerText = '[PINNED_OK]';
+      setTimeout(() => { btn.innerText = '[PIN_DEFAULT]'; }, 1800);
+    }
+
+    function loadProviderDefaults() {
+      const saved = localStorage.getItem('easy_invoice_provider_default');
+      if (!saved) return;
+      try {
+        const d = JSON.parse(saved);
+        if (d.senderName) document.getElementById('sender-name').value = d.senderName;
+        if (d.senderRole) document.getElementById('sender-role').value = d.senderRole;
+        if (d.senderContact) document.getElementById('sender-contact').value = d.senderContact;
+        if (d.customLogoBase64) {
+          customLogoBase64 = d.customLogoBase64;
+          document.getElementById('logo
