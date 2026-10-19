@@ -642,7 +642,6 @@
         timestamp: new Date().toISOString()
       };
 
-      // Remove existing if duplicate number, put at top
       invoicesHistory = [newRecord, ...invoicesHistory.filter(item => item.id !== invNo)];
       localStorage.setItem('easy_invoice_history', JSON.stringify(invoicesHistory));
     }
