@@ -4,9 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Easy Invoice — Fast Billing for Freelancers</title>
+  
+  <!-- Vercel Analytics & Supabase -->
   <script defer src="https://cdn.vercel-insights.com/v1/script.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <style>
     :root { --brand-color: #18181b; }
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f8f8f7; color: #18181b; letter-spacing: -0.01em; }
@@ -48,6 +52,10 @@
       </div>
 
       <div class="flex items-center gap-2.5 text-sm">
+        <!-- New Auth Button -->
+        <button id="auth-btn" onclick="openAuthModal()" class="px-4 py-1.5 rounded-xl border border-zinc-200 text-xs font-semibold text-zinc-700 bg-white hover:border-zinc-300 transition cursor-pointer shadow-2xs">
+          Sign In
+        </button>
         <button onclick="copyShareableClientLink()" id="copy-link-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 hover:border-zinc-300 bg-white text-xs font-semibold text-zinc-700 hover:text-zinc-900 transition shadow-2xs cursor-pointer">
           <span id="copy-link-text">Copy Client Link</span>
         </button>
@@ -55,6 +63,32 @@
       </div>
     </div>
   </header>
+
+  <!-- AUTHENTICATION MODAL -->
+  <div id="auth-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/40 backdrop-blur-sm">
+    <div class="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full relative">
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-zinc-400 hover:text-zinc-900 text-xl font-bold cursor-pointer">&times;</button>
+      <h2 class="text-xl font-bold text-zinc-900 mb-2">Sign In / Account</h2>
+      <p class="text-xs text-zinc-500 mb-6">Log in to save and access your invoices securely from the cloud.</p>
+      
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-zinc-700 mb-1">Email</label>
+          <input type="email" id="auth-email" placeholder="you@example.com" class="paper-input border border-zinc-300 rounded-lg p-2 w-full text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-zinc-700 mb-1">Password</label>
+          <input type="password" id="auth-password" placeholder="••••••••" class="paper-input border border-zinc-300 rounded-lg p-2 w-full text-sm">
+        </div>
+        
+        <div class="pt-2 flex gap-2">
+          <button onclick="handleLogin()" class="flex-1 bg-zinc-900 text-white rounded-xl py-2 text-sm font-bold hover:opacity-90 transition cursor-pointer">Login</button>
+          <button onclick="handleSignUp()" class="flex-1 bg-white border border-zinc-200 text-zinc-900 rounded-xl py-2 text-sm font-bold hover:bg-zinc-50 transition cursor-pointer">Sign Up</button>
+        </div>
+        <p id="auth-error" class="text-xs text-red-500 mt-2 hidden"></p>
+      </div>
+    </div>
+  </div>
 
   <!-- ================================================================= -->
   <!-- VIEW 1: EDITOR & BUILDER CONTROLS                                 -->
@@ -339,9 +373,22 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   
   <script>
+    // --- SUPABASE CONFIGURATION ---
+    // You will need to replace these with your actual Supabase URL and Anon Key later
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+    const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+    let supabaseClient = null;
+    let currentUser = null;
+
+    try {
+      supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    } catch(e) {
+      console.warn("Supabase not fully configured yet.");
+    }
+
     // --- STATE MANAGEMENT ---
-    let docMode = 'full'; // 'full' | 'deposit' | 'quote'
-    let billingMode = 'hourly'; // 'hourly' | 'flat'
+    let docMode = 'full'; 
+    let billingMode = 'hourly'; 
     let currencySymbol = '$';
     let accentColor = '#18181b';
     let lineItems = [
@@ -362,6 +409,52 @@
       updateQRCode();
       loadFromLocalStorage();
     });
+
+    // --- AUTH LOGIC ---
+    function openAuthModal() {
+      document.getElementById('auth-modal').classList.remove('hidden');
+    }
+    
+    function closeAuthModal() {
+      document.getElementById('auth-modal').classList.add('hidden');
+      document.getElementById('auth-error').classList.add('hidden');
+    }
+
+    async function handleSignUp() {
+      if(!supabaseClient) return alert("Supabase keys are needed to enable Sign Up!");
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+      
+      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      if (error) {
+        showAuthError(error.message);
+      } else {
+        alert("Success! Check your email to confirm your account.");
+        closeAuthModal();
+      }
+    }
+
+    async function handleLogin() {
+      if(!supabaseClient) return alert("Supabase keys are needed to enable Login!");
+      const email = document.getElementById('auth-email').value;
+      const password = document.getElementById('auth-password').value;
+      
+      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        showAuthError(error.message);
+      } else {
+        currentUser = data.user;
+        document.getElementById('auth-btn').innerText = "Account";
+        closeAuthModal();
+        alert("Logged in! Your invoices will now sync to the cloud.");
+      }
+    }
+
+    function showAuthError(msg) {
+      const errEl = document.getElementById('auth-error');
+      errEl.innerText = msg;
+      errEl.classList.remove('hidden');
+    }
 
     function switchAppView(view) {
       document.getElementById('editor-view-container').classList.add('hidden');
@@ -645,6 +738,20 @@
 
       invoicesHistory = [newRecord, ...invoicesHistory.filter(item => item.id !== invNo)];
       localStorage.setItem('easy_invoice_history', JSON.stringify(invoicesHistory));
+      
+      // Sync to cloud if user is signed in
+      if (currentUser && supabaseClient) {
+        supabaseClient.from('invoices').upsert({
+          user_id: currentUser.id,
+          invoice_no: newRecord.id,
+          client_name: newRecord.client,
+          issued_date: newRecord.date,
+          total_amount: newRecord.total,
+          status: newRecord.status
+        }).then(({ error }) => {
+          if (error) console.error("Cloud sync failed:", error);
+        });
+      }
     }
 
     function renderHistoryTable() {
