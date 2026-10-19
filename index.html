@@ -1036,7 +1036,7 @@
             <input type="text" id="desc-input-${index}" value="${String(item.desc).replace(/"/g, '&quot;')}" 
               oninput="handleLineInput(${index}, 'desc', this.value)" 
               onkeydown="handleRowKeydown(event, ${index})"
-              placeholder="Deliverable description (supports **bold**, `code`, [link](url))..." 
+              placeholder="Deliverable description (supports **bold**, \`code\`, [link](url))..." 
               class="paper-input font-mono no-print">
             <div id="md-preview-${index}" class="text-[11px] text-gray-600 font-mono px-2 pt-1 ${mdPreviewVisible} no-print">${parseMarkdown(item.desc)}</div>
             <div id="print-desc-${index}" class="print-only text-xs font-mono text-black py-1">${parseMarkdown(item.desc)}</div>
