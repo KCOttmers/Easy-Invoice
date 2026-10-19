@@ -1,0 +1,27 @@
+{
+  "name": "easy-invoice",
+  "version": "1.0.0",
+  "description": "Fast Billing for Freelancers",
+  "main": "index.html",
+  "scripts": {
+    "test": "echo \"No tests specified\""
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KCOttmers/Easy-Invoice.git"
+  },
+  "keywords": [
+    "invoice",
+    "billing",
+    "freelancer"
+  ],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/KCOttmers/Easy-Invoice/issues"
+  },
+  "homepage": "https://github.com/KCOttmers/Easy-Invoice#readme",
+  "dependencies": {
+    "@vercel/analytics": "^2.0.1"
+  }
+}
